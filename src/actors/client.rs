@@ -1,31 +1,19 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use bastion::prelude::*;
+use cqrs_es::Aggregate;
 use log::{info, warn};
 
 use crate::{
-  actor::Actor,
-  error::ActorError,
-  state::{State, WeakState},
-  traits::{TActor, TState},
+  actors::error::ActorError,
+  aggregates::client::{aggregate::ClientState, commands::ClientCommand, events::ClientEvent},
 };
 
-#[derive(Debug)]
-pub enum AskClient {
-  Messages,
-}
-
-#[derive(Debug)]
-pub enum TellClient<'a> {
-  Add(&'a str),
-}
-
-#[derive(Debug, Default)]
-pub struct ClientState {
-  messages: Vec<String>,
-}
-
-impl TState for ClientState {}
+use super::{
+  state::{State, WeakState},
+  traits::TActor,
+  Actor,
+};
 
 pub struct ClientActor {
   supervisor: SupervisorRef,
@@ -64,23 +52,21 @@ impl TActor for ClientActor {
         let state: State<ClientState> = State::upgrade(state_weak);
         loop {
           MessageHandler::new(ctx.recv().await?)
-            .on_tell(|msg: TellClient, _| match msg {
-              TellClient::Add(msg) => run!(async {
-                let mut write = state.write().await;
-                write.messages.push(msg.to_owned());
-                drop(write);
-              }),
+            .on_tell(|cmd: ClientCommand, _| {
+              run!(async {
+                let read = state.read().await;
+                let events = read.handle(cmd, &()).await.unwrap();
+                Distributor::named("client").tell_one(events).unwrap();
+              });
             })
-            .on_question(|req: AskClient, addr| match req {
-              AskClient::Messages => {
-                run!(async {
-                  let read = state.read().await;
-                  match addr.reply(read.messages.clone()) {
-                    Ok(()) => info!("Reply succeeded"),
-                    Err(msg) => warn!("Reply {msg:?} failed"),
-                  }
-                });
-              }
+            .on_tell(|events: Vec<ClientEvent>, _| {
+              run!(async {
+                let mut write = state.write().await;
+                for evt in events {
+                  write.apply(evt);
+                }
+                drop(write);
+              })
             })
             .on_fallback(|unknown, _| warn!("Unknown message: {unknown:?}"));
         }

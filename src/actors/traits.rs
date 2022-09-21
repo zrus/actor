@@ -3,7 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use bastion::prelude::*;
 
-use crate::{actor::Actor, state::WeakState};
+use super::{state::WeakState, Actor};
 
 #[async_trait]
 pub trait TActor {
@@ -39,6 +39,3 @@ pub trait TActor {
 
   fn with_resizer() -> Option<OptimalSizeExploringResizer>;
 }
-
-#[async_trait]
-pub trait TState {}

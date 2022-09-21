@@ -1,10 +1,17 @@
+pub mod client;
+pub mod error;
+pub mod state;
+pub mod traits;
+
 use std::marker::PhantomData;
 use std::time::Duration;
 
 use anyhow::Result;
 use bastion::prelude::*;
 
-use crate::{error::ActorError, state::WeakState, traits::TActor};
+use self::error::ActorError;
+use self::state::WeakState;
+use self::traits::TActor;
 
 pub struct Actor<A> {
   // For supervisor
@@ -41,58 +48,6 @@ where
       resizer: None,
       phantom_actor: PhantomData,
     }
-  }
-
-  // For supervisor
-  pub fn with_supervisor_callbacks(mut self, callbacks: Callbacks) -> Self {
-    self.supervisor_callbacks = Some(callbacks);
-    self
-  }
-
-  pub fn with_restart_strategy(mut self, restart_strategy: RestartStrategy) -> Self {
-    self.restart_strategy = Some(restart_strategy);
-    self
-  }
-
-  pub fn with_strategy(mut self, strategy: SupervisionStrategy) -> Self {
-    self.strategy = Some(strategy);
-    self
-  }
-
-  // For children
-  pub fn with_children_callbacks(mut self, callbacks: Callbacks) -> Self {
-    self.children_callbacks = Some(callbacks);
-    self
-  }
-
-  pub fn with_dispatcher(mut self, dispatcher: Dispatcher) -> Self {
-    self.dispatcher = Some(dispatcher);
-    self
-  }
-
-  pub fn with_distributor(mut self, distributor: Distributor) -> Self {
-    self.distributor = Some(distributor);
-    self
-  }
-
-  pub fn with_heartbeat_tick(mut self, interval: Duration) -> Self {
-    self.heartbeat_tick = Some(interval);
-    self
-  }
-
-  pub fn with_name(mut self, name: impl Into<String>) -> Self {
-    self.name = Some(name.into());
-    self
-  }
-
-  pub fn with_redundancy(mut self, redundancy: usize) -> Self {
-    self.redundancy = Some(redundancy);
-    self
-  }
-
-  pub fn with_resizer(mut self, resizer: OptimalSizeExploringResizer) -> Self {
-    self.resizer = Some(resizer);
-    self
   }
 
   pub fn run_with_supervisor(
@@ -169,5 +124,57 @@ where
     .map_err(|_| ActorError::UnableToInitSupervisor)?;
 
     self.run_with_supervisor(supervisor, weak)
+  }
+
+  // For supervisor
+  pub fn with_supervisor_callbacks(mut self, callbacks: Callbacks) -> Self {
+    self.supervisor_callbacks = Some(callbacks);
+    self
+  }
+
+  pub fn with_restart_strategy(mut self, restart_strategy: RestartStrategy) -> Self {
+    self.restart_strategy = Some(restart_strategy);
+    self
+  }
+
+  pub fn with_strategy(mut self, strategy: SupervisionStrategy) -> Self {
+    self.strategy = Some(strategy);
+    self
+  }
+
+  // For children
+  pub fn with_children_callbacks(mut self, callbacks: Callbacks) -> Self {
+    self.children_callbacks = Some(callbacks);
+    self
+  }
+
+  pub fn with_dispatcher(mut self, dispatcher: Dispatcher) -> Self {
+    self.dispatcher = Some(dispatcher);
+    self
+  }
+
+  pub fn with_distributor(mut self, distributor: Distributor) -> Self {
+    self.distributor = Some(distributor);
+    self
+  }
+
+  pub fn with_heartbeat_tick(mut self, interval: Duration) -> Self {
+    self.heartbeat_tick = Some(interval);
+    self
+  }
+
+  pub fn with_name(mut self, name: impl Into<String>) -> Self {
+    self.name = Some(name.into());
+    self
+  }
+
+  pub fn with_redundancy(mut self, redundancy: usize) -> Self {
+    self.redundancy = Some(redundancy);
+    self
+  }
+
+  pub fn with_resizer(mut self, resizer: OptimalSizeExploringResizer) -> Self {
+    self.resizer = Some(resizer);
+    self
   }
 }

@@ -1,17 +1,12 @@
-mod actor;
-mod client;
-mod commands;
-mod error;
-mod state;
-mod traits;
+mod actors;
+mod aggregates;
 
 use anyhow::Result;
 use bastion::prelude::*;
 
 use crate::{
-  client::{AskClient, ClientActor, ClientState, TellClient},
-  state::State,
-  traits::TActor,
+  actors::{client::ClientActor, state::State, traits::TActor},
+  aggregates::client::aggregate::ClientState,
 };
 
 #[tokio::main]
@@ -22,14 +17,15 @@ async fn main() -> Result<()> {
   Bastion::start();
 
   let state = State::<ClientState>::default();
-  ClientActor::default().run(&state.downgrade())?;
-  let client = Distributor::named("client");
+  ClientActor::default()
+    .with_restart_strategy(RestartStrategy::new(
+      RestartPolicy::Always,
+      ActorRestartStrategy::Immediate,
+    ))
+    .run(&state.downgrade())?;
 
   tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-  client.tell_one(TellClient::Add("Hello, I am Tuong"))?;
-
-  let answer: Vec<String> = client.request(AskClient::Messages).await??;
-  println!("Messages: {answer:?}");
+  let client = Distributor::named("client");
 
   Bastion::block_until_stopped();
   Ok(())
